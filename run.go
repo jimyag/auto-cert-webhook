@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"reflect"
 	"strings"
 	"syscall"
-	"time"
 
+	"github.com/kelseyhightower/envconfig"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
@@ -26,20 +27,11 @@ const (
 	// automatically mounted by Kubernetes in pods with ServiceAccount.
 	serviceAccountNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
-	// Default values
-	defaultNamespace      = "default"
-	defaultPort           = 8443
-	defaultMetricsPort    = 8080
-	defaultMetricsPath    = "/metrics"
-	defaultHealthzPath    = "/healthz"
-	defaultReadyzPath     = "/readyz"
-	defaultCAValidity     = 2 * 24 * time.Hour
-	defaultCARefresh      = 1 * 24 * time.Hour
-	defaultCertValidity   = 1 * 24 * time.Hour
-	defaultCertRefresh    = 12 * time.Hour
-	defaultLeaseDuration  = 30 * time.Second
-	defaultRenewDeadline  = 10 * time.Second
-	defaultRetryPeriod    = 5 * time.Second
+	// envPrefix is the environment variable prefix for all configuration.
+	envPrefix = "ACW"
+
+	// Default namespace when not auto-detected
+	defaultNamespace = "default"
 )
 
 // Run starts the webhook server with the given Admission implementation.
@@ -58,15 +50,20 @@ func RunWithContext(ctx context.Context, admission Admission) error {
 	cfg := admission.Configure()
 	hooks := admission.Webhooks()
 
+	// Apply environment variables (priority: code > env > default)
+	if err := applyEnvConfig(&cfg); err != nil {
+		return err
+	}
+
 	if cfg.Name == "" {
-		return fmt.Errorf("webhook name is required in Configure()")
+		return fmt.Errorf("webhook name is required in Configure() or ACW_NAME environment variable")
 	}
 
 	if len(hooks) == 0 {
 		return fmt.Errorf("at least one webhook hook is required in Webhooks()")
 	}
 
-	// Apply defaults
+	// Apply defaults for any remaining unset values
 	applyDefaults(&cfg)
 
 	klog.Infof("Starting webhook %s in namespace %s", cfg.Name, cfg.Namespace)
@@ -189,92 +186,99 @@ func RunWithContext(ctx context.Context, admission Admission) error {
 	}
 }
 
-// applyDefaults applies default values to the configuration.
+// applyEnvConfig applies configuration from environment variables using envconfig.
+// Priority: code > env > default (defaults are set via struct tags)
+func applyEnvConfig(cfg *Config) error {
+	// Deep copy user-defined values (including pointers)
+	userCfg := deepCopyConfig(cfg)
+
+	// Process environment variables (includes defaults from tags)
+	if err := envconfig.Process(envPrefix, cfg); err != nil {
+		return fmt.Errorf("failed to process environment variables: %w", err)
+	}
+
+	// Restore non-zero values from user code (code takes priority)
+	userVal := reflect.ValueOf(userCfg).Elem()
+	cfgVal := reflect.ValueOf(cfg).Elem()
+	for i := 0; i < userVal.NumField(); i++ {
+		userField := userVal.Field(i)
+		if userField.Kind() == reflect.Ptr {
+			if !userField.IsNil() {
+				cfgVal.Field(i).Set(userField)
+			}
+		} else if !userField.IsZero() {
+			cfgVal.Field(i).Set(userField)
+		}
+	}
+
+	return nil
+}
+
+// deepCopyConfig creates a deep copy of Config, including pointer fields.
+func deepCopyConfig(cfg *Config) *Config {
+	copied := *cfg
+
+	// Deep copy pointer fields using reflection
+	cfgVal := reflect.ValueOf(cfg).Elem()
+	copiedVal := reflect.ValueOf(&copied).Elem()
+
+	for i := 0; i < cfgVal.NumField(); i++ {
+		field := cfgVal.Field(i)
+		if field.Kind() == reflect.Ptr && !field.IsNil() {
+			// Create a new pointer and copy the value
+			newPtr := reflect.New(field.Elem().Type())
+			newPtr.Elem().Set(field.Elem())
+			copiedVal.Field(i).Set(newPtr)
+		}
+	}
+
+	return &copied
+}
+
+// applyDefaults applies dynamic defaults that depend on other config values.
 func applyDefaults(cfg *Config) {
+	// Namespace: auto-detect from ServiceAccount or POD_NAMESPACE
 	if cfg.Namespace == "" {
 		cfg.Namespace = getNamespace()
 	}
 
+	// ServiceName defaults to Name
 	if cfg.ServiceName == "" {
 		cfg.ServiceName = cfg.Name
 	}
 
-	if cfg.Port == 0 {
-		cfg.Port = defaultPort
-	}
-
-	if cfg.MetricsPort == 0 {
-		cfg.MetricsPort = defaultMetricsPort
-	}
-
-	if cfg.MetricsPath == "" {
-		cfg.MetricsPath = defaultMetricsPath
-	}
-
-	if cfg.HealthzPath == "" {
-		cfg.HealthzPath = defaultHealthzPath
-	}
-
-	if cfg.ReadyzPath == "" {
-		cfg.ReadyzPath = defaultReadyzPath
-	}
-
+	// Resource names default to <Name>-suffix
 	if cfg.CASecretName == "" {
 		cfg.CASecretName = cfg.Name + "-ca"
 	}
-
 	if cfg.CertSecretName == "" {
 		cfg.CertSecretName = cfg.Name + "-cert"
 	}
-
 	if cfg.CABundleConfigMapName == "" {
 		cfg.CABundleConfigMapName = cfg.Name + "-ca-bundle"
 	}
-
-	if cfg.CAValidity == 0 {
-		cfg.CAValidity = defaultCAValidity
-	}
-
-	if cfg.CARefresh == 0 {
-		cfg.CARefresh = defaultCARefresh
-	}
-
-	if cfg.CertValidity == 0 {
-		cfg.CertValidity = defaultCertValidity
-	}
-
-	if cfg.CertRefresh == 0 {
-		cfg.CertRefresh = defaultCertRefresh
-	}
-
 	if cfg.LeaderElectionID == "" {
 		cfg.LeaderElectionID = cfg.Name + "-leader"
-	}
-
-	if cfg.LeaseDuration == 0 {
-		cfg.LeaseDuration = defaultLeaseDuration
-	}
-
-	if cfg.RenewDeadline == 0 {
-		cfg.RenewDeadline = defaultRenewDeadline
-	}
-
-	if cfg.RetryPeriod == 0 {
-		cfg.RetryPeriod = defaultRetryPeriod
 	}
 }
 
 // getNamespace returns the namespace from:
-// 1. POD_NAMESPACE environment variable (if set)
-// 2. ServiceAccount namespace file (auto-mounted by Kubernetes)
-// 3. defaultNamespace as fallback
+// 1. ACW_NAMESPACE environment variable (if set)
+// 2. POD_NAMESPACE environment variable (if set)
+// 3. ServiceAccount namespace file (auto-mounted by Kubernetes)
+// 4. defaultNamespace as fallback
 func getNamespace() string {
-	// First, try environment variable
+	// First, try ACW_NAMESPACE
+	if ns := os.Getenv(envPrefix + "_NAMESPACE"); ns != "" {
+		return ns
+	}
+
+	// Second, try POD_NAMESPACE (for backward compatibility)
 	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
 		return ns
 	}
 
-	// Second, try reading from ServiceAccount namespace file
+	// Third, try reading from ServiceAccount namespace file
 	if data, err := os.ReadFile(serviceAccountNamespaceFile); err == nil {
 		if ns := strings.TrimSpace(string(data)); ns != "" {
 			return ns
