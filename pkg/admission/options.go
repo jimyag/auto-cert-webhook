@@ -26,6 +26,20 @@ func WithPort(port int) Option {
 	}
 }
 
+// WithMetricsEnabled enables or disables the metrics server.
+func WithMetricsEnabled(enabled bool) Option {
+	return func(c *Config) {
+		c.MetricsEnabled = enabled
+	}
+}
+
+// WithMetricsPort sets the port for the metrics server.
+func WithMetricsPort(port int) Option {
+	return func(c *Config) {
+		c.MetricsPort = port
+	}
+}
+
 // WithHealthzPath sets the path for health check endpoint.
 func WithHealthzPath(path string) Option {
 	return func(c *Config) {

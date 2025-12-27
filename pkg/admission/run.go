@@ -15,6 +15,7 @@ import (
 	"github.com/jimyag/auto-cert-webhook/pkg/certmanager"
 	"github.com/jimyag/auto-cert-webhook/pkg/certprovider"
 	"github.com/jimyag/auto-cert-webhook/pkg/leaderelection"
+	"github.com/jimyag/auto-cert-webhook/pkg/metrics"
 	"github.com/jimyag/auto-cert-webhook/pkg/server"
 	"github.com/jimyag/auto-cert-webhook/pkg/webhook"
 )
@@ -83,6 +84,19 @@ func RunWithContext(ctx context.Context, wh Webhook, opts ...Option) error {
 			klog.Errorf("Server error: %v", err)
 		}
 	}()
+
+	// Start metrics server if enabled
+	if config.MetricsEnabled {
+		metricsSrv := metrics.NewServer(metrics.ServerConfig{
+			Port: config.MetricsPort,
+			Path: config.MetricsPath,
+		})
+		go func() {
+			if err := metricsSrv.Start(ctx); err != nil {
+				klog.Errorf("Metrics server error: %v", err)
+			}
+		}()
+	}
 
 	// Create certificate manager and CA bundle syncer (runs on leader only)
 	certMgr := certmanager.New(client, certmanager.Config{

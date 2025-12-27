@@ -78,6 +78,8 @@ admission.Run(&myWebhook{},
     admission.WithNamespace("webhook-system"),
     admission.WithServiceName("my-webhook"),
     admission.WithPort(8443),
+    admission.WithMetricsEnabled(true),  // default: true
+    admission.WithMetricsPort(8080),     // default: 8080
     admission.WithCAValidity(365*24*time.Hour),
     admission.WithCertValidity(30*24*time.Hour),
     admission.WithLeaderElection(true),
@@ -151,6 +153,33 @@ rules:
 |----------|-------------|---------|
 | `POD_NAMESPACE` | Namespace for certificate secrets | `default` |
 | `POD_NAME` | Pod identity for leader election | hostname |
+
+## Metrics
+
+The framework exposes Prometheus metrics on a separate HTTP port (default: enabled on port 8080). Use `WithMetricsEnabled(false)` to disable.
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `admission_webhook_certificate_expiry_timestamp_seconds` | Gauge | `type` | Certificate expiry timestamp (unix seconds) |
+| `admission_webhook_certificate_not_before_timestamp_seconds` | Gauge | `type` | Certificate not-before timestamp (unix seconds) |
+| `admission_webhook_certificate_valid_duration_seconds` | Gauge | `type` | Total certificate validity duration (seconds) |
+
+The `type` label is `serving` for the server certificate.
+
+Example Prometheus alert for certificate expiry:
+
+```yaml
+groups:
+- name: webhook-certificates
+  rules:
+  - alert: WebhookCertificateExpiringSoon
+    expr: admission_webhook_certificate_expiry_timestamp_seconds{type="serving"} - time() < 86400 * 7
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: "Webhook certificate expiring in less than 7 days"
+```
 
 ## License
 

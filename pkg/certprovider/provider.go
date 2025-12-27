@@ -3,8 +3,11 @@ package certprovider
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"sync/atomic"
+
+	"github.com/jimyag/auto-cert-webhook/pkg/metrics"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -130,6 +133,14 @@ func (p *Provider) onSecretUpdate(secret *corev1.Secret) {
 	if err != nil {
 		klog.Errorf("Failed to parse certificate from secret %s/%s: %v", p.namespace, p.name, err)
 		return
+	}
+
+	// Update metrics
+	if cert.Leaf == nil {
+		cert.Leaf, _ = x509.ParseCertificate(cert.Certificate[0])
+	}
+	if cert.Leaf != nil {
+		metrics.UpdateCertMetrics("serving", cert.Leaf)
 	}
 
 	p.current.Store(&cert)

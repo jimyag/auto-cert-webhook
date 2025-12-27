@@ -16,6 +16,12 @@ type Config struct {
 	// Port is the port the webhook server listens on.
 	Port int
 
+	// MetricsEnabled enables the metrics server.
+	MetricsEnabled bool
+
+	// MetricsPort is the port for the metrics server.
+	MetricsPort int
+
 	// HealthzPath is the path for health check endpoint.
 	HealthzPath string
 
@@ -73,6 +79,8 @@ func DefaultConfig() *Config {
 		Namespace:             namespace,
 		ServiceName:           "webhook",
 		Port:                  8443,
+		MetricsEnabled:        true,
+		MetricsPort:           8080,
 		HealthzPath:           "/healthz",
 		ReadyzPath:            "/readyz",
 		MetricsPath:           "/metrics",
