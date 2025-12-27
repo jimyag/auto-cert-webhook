@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -206,65 +205,3 @@ func (s *Syncer) patchMutatingWebhook(ctx context.Context, name string, caBundle
 	return err
 }
 
-// CreateValidatingWebhookConfiguration creates a ValidatingWebhookConfiguration.
-func CreateValidatingWebhookConfiguration(name, namespace, serviceName, path string, port int32, caBundle []byte, rules []admissionregistrationv1.RuleWithOperations, failurePolicy *admissionregistrationv1.FailurePolicyType, sideEffects *admissionregistrationv1.SideEffectClass, matchPolicy *admissionregistrationv1.MatchPolicyType, namespaceSelector, objectSelector *metav1.LabelSelector, timeoutSeconds *int32) *admissionregistrationv1.ValidatingWebhookConfiguration {
-	return &admissionregistrationv1.ValidatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Webhooks: []admissionregistrationv1.ValidatingWebhook{
-			{
-				Name:                    fmt.Sprintf("%s.%s.svc", serviceName, namespace),
-				Rules:                   rules,
-				FailurePolicy:           failurePolicy,
-				SideEffects:             sideEffects,
-				MatchPolicy:             matchPolicy,
-				NamespaceSelector:       namespaceSelector,
-				ObjectSelector:          objectSelector,
-				TimeoutSeconds:          timeoutSeconds,
-				AdmissionReviewVersions: []string{"v1", "v1beta1"},
-				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					Service: &admissionregistrationv1.ServiceReference{
-						Name:      serviceName,
-						Namespace: namespace,
-						Path:      &path,
-						Port:      &port,
-					},
-					CABundle: caBundle,
-				},
-			},
-		},
-	}
-}
-
-// CreateMutatingWebhookConfiguration creates a MutatingWebhookConfiguration.
-func CreateMutatingWebhookConfiguration(name, namespace, serviceName, path string, port int32, caBundle []byte, rules []admissionregistrationv1.RuleWithOperations, failurePolicy *admissionregistrationv1.FailurePolicyType, sideEffects *admissionregistrationv1.SideEffectClass, matchPolicy *admissionregistrationv1.MatchPolicyType, namespaceSelector, objectSelector *metav1.LabelSelector, timeoutSeconds *int32, reinvocationPolicy *admissionregistrationv1.ReinvocationPolicyType) *admissionregistrationv1.MutatingWebhookConfiguration {
-	return &admissionregistrationv1.MutatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Webhooks: []admissionregistrationv1.MutatingWebhook{
-			{
-				Name:                    fmt.Sprintf("%s.%s.svc", serviceName, namespace),
-				Rules:                   rules,
-				FailurePolicy:           failurePolicy,
-				SideEffects:             sideEffects,
-				MatchPolicy:             matchPolicy,
-				NamespaceSelector:       namespaceSelector,
-				ObjectSelector:          objectSelector,
-				TimeoutSeconds:          timeoutSeconds,
-				ReinvocationPolicy:      reinvocationPolicy,
-				AdmissionReviewVersions: []string{"v1", "v1beta1"},
-				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					Service: &admissionregistrationv1.ServiceReference{
-						Name:      serviceName,
-						Namespace: namespace,
-						Path:      &path,
-						Port:      &port,
-					},
-					CABundle: caBundle,
-				},
-			},
-		},
-	}
-}

@@ -15,8 +15,8 @@ const (
 )
 
 var (
-	// CertExpiryTimestamp is a gauge that tracks the expiry timestamp of certificates.
-	CertExpiryTimestamp = prometheus.NewGaugeVec(
+	// certExpiryTimestamp is a gauge that tracks the expiry timestamp of certificates.
+	certExpiryTimestamp = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -26,8 +26,8 @@ var (
 		[]string{"type"}, // "ca" or "serving"
 	)
 
-	// CertNotBeforeTimestamp is a gauge that tracks the not-before timestamp of certificates.
-	CertNotBeforeTimestamp = prometheus.NewGaugeVec(
+	// certNotBeforeTimestamp is a gauge that tracks the not-before timestamp of certificates.
+	certNotBeforeTimestamp = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -37,8 +37,8 @@ var (
 		[]string{"type"},
 	)
 
-	// CertValidDurationSeconds is a gauge that tracks the total valid duration of certificates.
-	CertValidDurationSeconds = prometheus.NewGaugeVec(
+	// certValidDurationSeconds is a gauge that tracks the total valid duration of certificates.
+	certValidDurationSeconds = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -54,9 +54,9 @@ var (
 // Register registers all certificate metrics with the default registry.
 func Register() {
 	registerOnce.Do(func() {
-		prometheus.MustRegister(CertExpiryTimestamp)
-		prometheus.MustRegister(CertNotBeforeTimestamp)
-		prometheus.MustRegister(CertValidDurationSeconds)
+		prometheus.MustRegister(certExpiryTimestamp)
+		prometheus.MustRegister(certNotBeforeTimestamp)
+		prometheus.MustRegister(certValidDurationSeconds)
 	})
 }
 
@@ -66,9 +66,9 @@ func UpdateCertMetrics(certType string, cert *x509.Certificate) {
 		return
 	}
 
-	CertExpiryTimestamp.WithLabelValues(certType).Set(float64(cert.NotAfter.Unix()))
-	CertNotBeforeTimestamp.WithLabelValues(certType).Set(float64(cert.NotBefore.Unix()))
-	CertValidDurationSeconds.WithLabelValues(certType).Set(cert.NotAfter.Sub(cert.NotBefore).Seconds())
+	certExpiryTimestamp.WithLabelValues(certType).Set(float64(cert.NotAfter.Unix()))
+	certNotBeforeTimestamp.WithLabelValues(certType).Set(float64(cert.NotBefore.Unix()))
+	certValidDurationSeconds.WithLabelValues(certType).Set(cert.NotAfter.Sub(cert.NotBefore).Seconds())
 }
 
 // Handler returns an HTTP handler for the metrics endpoint.

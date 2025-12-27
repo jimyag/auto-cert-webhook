@@ -7,26 +7,6 @@ import (
 	"time"
 )
 
-func TestDefaultConfig(t *testing.T) {
-	config := DefaultConfig("test-ns", "test-lease")
-
-	if config.Namespace != "test-ns" {
-		t.Errorf("Namespace: got %q, want %q", config.Namespace, "test-ns")
-	}
-	if config.Name != "test-lease" {
-		t.Errorf("Name: got %q, want %q", config.Name, "test-lease")
-	}
-	if config.LeaseDuration != 30*time.Second {
-		t.Errorf("LeaseDuration: got %v, want %v", config.LeaseDuration, 30*time.Second)
-	}
-	if config.RenewDeadline != 10*time.Second {
-		t.Errorf("RenewDeadline: got %v, want %v", config.RenewDeadline, 10*time.Second)
-	}
-	if config.RetryPeriod != 5*time.Second {
-		t.Errorf("RetryPeriod: got %v, want %v", config.RetryPeriod, 5*time.Second)
-	}
-}
-
 func TestGetIdentity(t *testing.T) {
 	t.Run("from POD_NAME env", func(t *testing.T) {
 		os.Setenv("POD_NAME", "test-pod-123")

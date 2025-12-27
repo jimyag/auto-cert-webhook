@@ -17,13 +17,6 @@ import (
 // HookType defines the type of admission webhook.
 type HookType string
 
-const (
-	// Mutating indicates a mutating admission webhook.
-	Mutating HookType = "Mutating"
-	// Validating indicates a validating admission webhook.
-	Validating HookType = "Validating"
-)
-
 // AdmitFunc is the function signature for handling admission requests.
 // This is defined here to match the public API type signature.
 type AdmitFunc = func(ar admissionv1.AdmissionReview) *admissionv1.AdmissionResponse

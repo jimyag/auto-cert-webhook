@@ -15,9 +15,9 @@ import (
 
 func TestUpdateCertMetrics(t *testing.T) {
 	// Reset metrics for testing
-	CertExpiryTimestamp.Reset()
-	CertNotBeforeTimestamp.Reset()
-	CertValidDurationSeconds.Reset()
+	certExpiryTimestamp.Reset()
+	certNotBeforeTimestamp.Reset()
+	certValidDurationSeconds.Reset()
 
 	// Create a test certificate
 	notBefore := time.Now()
@@ -28,34 +28,34 @@ func TestUpdateCertMetrics(t *testing.T) {
 		UpdateCertMetrics("serving", cert)
 
 		// Check expiry timestamp
-		expiry := getGaugeValue(t, CertExpiryTimestamp, "serving")
+		expiry := getGaugeValue(t, certExpiryTimestamp, "serving")
 		if expiry != float64(notAfter.Unix()) {
-			t.Errorf("CertExpiryTimestamp: got %v, want %v", expiry, float64(notAfter.Unix()))
+			t.Errorf("certExpiryTimestamp: got %v, want %v", expiry, float64(notAfter.Unix()))
 		}
 
 		// Check not-before timestamp
-		notBeforeVal := getGaugeValue(t, CertNotBeforeTimestamp, "serving")
+		notBeforeVal := getGaugeValue(t, certNotBeforeTimestamp, "serving")
 		if notBeforeVal != float64(notBefore.Unix()) {
-			t.Errorf("CertNotBeforeTimestamp: got %v, want %v", notBeforeVal, float64(notBefore.Unix()))
+			t.Errorf("certNotBeforeTimestamp: got %v, want %v", notBeforeVal, float64(notBefore.Unix()))
 		}
 
 		// Check valid duration
-		duration := getGaugeValue(t, CertValidDurationSeconds, "serving")
+		duration := getGaugeValue(t, certValidDurationSeconds, "serving")
 		expectedDuration := notAfter.Sub(notBefore).Seconds()
 		if duration != expectedDuration {
-			t.Errorf("CertValidDurationSeconds: got %v, want %v", duration, expectedDuration)
+			t.Errorf("certValidDurationSeconds: got %v, want %v", duration, expectedDuration)
 		}
 	})
 
 	t.Run("handles different cert types", func(t *testing.T) {
-		CertExpiryTimestamp.Reset()
+		certExpiryTimestamp.Reset()
 
 		UpdateCertMetrics("ca", cert)
 		UpdateCertMetrics("serving", cert)
 
 		// Both should have metrics
-		caExpiry := getGaugeValue(t, CertExpiryTimestamp, "ca")
-		servingExpiry := getGaugeValue(t, CertExpiryTimestamp, "serving")
+		caExpiry := getGaugeValue(t, certExpiryTimestamp, "ca")
+		servingExpiry := getGaugeValue(t, certExpiryTimestamp, "serving")
 
 		if caExpiry != float64(notAfter.Unix()) {
 			t.Errorf("CA expiry: got %v, want %v", caExpiry, float64(notAfter.Unix()))

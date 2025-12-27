@@ -254,18 +254,3 @@ func (m *Manager) createSecret(ctx context.Context, namespace, name string) (*co
 
 	return m.k8sClient.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 }
-
-// GetCABundle returns the current CA bundle from the configmap.
-func (m *Manager) GetCABundle(ctx context.Context) ([]byte, error) {
-	cm, err := m.k8sClient.CoreV1().ConfigMaps(m.config.Namespace).Get(ctx, m.config.CABundleConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	caBundle, ok := cm.Data["ca-bundle.crt"]
-	if !ok {
-		return nil, fmt.Errorf("ca-bundle.crt not found in configmap %s/%s", m.config.Namespace, m.config.CABundleConfigMapName)
-	}
-
-	return []byte(caBundle), nil
-}

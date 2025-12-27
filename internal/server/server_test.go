@@ -130,8 +130,8 @@ func TestServer_RegisterHook(t *testing.T) {
 	}
 
 	// Register hooks
-	server.RegisterHook("/mutate", Mutating, admitFunc)
-	server.RegisterHook("/validate", Validating, admitFunc)
+	server.RegisterHook("/mutate", "Mutating", admitFunc)
+	server.RegisterHook("/validate", "Validating", admitFunc)
 
 	// Verify handlers are registered by making test requests
 	t.Run("mutating hook registered", func(t *testing.T) {
@@ -185,15 +185,6 @@ func TestServer_HealthEndpointsRegistered(t *testing.T) {
 			t.Errorf("Expected status %d, got %d", http.StatusOK, rec.Code)
 		}
 	})
-}
-
-func TestHookType_Constants(t *testing.T) {
-	if Mutating != "Mutating" {
-		t.Errorf("Mutating: got %q, want %q", Mutating, "Mutating")
-	}
-	if Validating != "Validating" {
-		t.Errorf("Validating: got %q, want %q", Validating, "Validating")
-	}
 }
 
 func TestConfig(t *testing.T) {

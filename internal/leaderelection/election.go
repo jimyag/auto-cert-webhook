@@ -32,17 +32,6 @@ type Config struct {
 	RetryPeriod time.Duration
 }
 
-// DefaultConfig returns a default leader election configuration.
-func DefaultConfig(namespace, name string) Config {
-	return Config{
-		Namespace:     namespace,
-		Name:          name,
-		LeaseDuration: 30 * time.Second,
-		RenewDeadline: 10 * time.Second,
-		RetryPeriod:   5 * time.Second,
-	}
-}
-
 // Callbacks defines the callbacks for leader election events.
 type Callbacks struct {
 	// OnStartedLeading is called when this instance becomes the leader.
