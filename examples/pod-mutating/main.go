@@ -8,14 +8,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
-	"github.com/jimyag/auto-cert-webhook/pkg/admission"
+	webhook "github.com/jimyag/auto-cert-webhook"
 )
 
 func main() {
 	klog.InitFlags(nil)
 	flag.Parse()
 
-	if err := admission.Run(&podLabelInjector{}); err != nil {
+	if err := webhook.Run(&podLabelInjector{}); err != nil {
 		klog.Fatalf("Failed to run webhook: %v", err)
 	}
 }
@@ -24,18 +24,18 @@ func main() {
 type podLabelInjector struct{}
 
 // Configure returns the server-level configuration.
-func (p *podLabelInjector) Configure() admission.Config {
-	return admission.Config{
+func (p *podLabelInjector) Configure() webhook.Config {
+	return webhook.Config{
 		Name: "pod-label-injector",
 	}
 }
 
 // Webhooks returns all webhook definitions.
-func (p *podLabelInjector) Webhooks() []admission.Hook {
-	return []admission.Hook{
+func (p *podLabelInjector) Webhooks() []webhook.Hook {
+	return []webhook.Hook{
 		{
 			Path:  "/mutate-pods",
-			Type:  admission.Mutating,
+			Type:  webhook.Mutating,
 			Admit: p.mutatePod,
 		},
 	}
@@ -49,7 +49,7 @@ func (p *podLabelInjector) mutatePod(ar admissionv1.AdmissionReview) *admissionv
 	pod := &corev1.Pod{}
 	if err := json.Unmarshal(ar.Request.Object.Raw, pod); err != nil {
 		klog.Errorf("Failed to unmarshal pod: %v", err)
-		return admission.Errored(err)
+		return webhook.Errored(err)
 	}
 
 	// Make a copy for modification
@@ -64,5 +64,5 @@ func (p *podLabelInjector) mutatePod(ar admissionv1.AdmissionReview) *admissionv
 
 	klog.V(2).Infof("Injected labels into pod %s/%s", ar.Request.Namespace, ar.Request.Name)
 
-	return admission.PatchResponse(pod, modifiedPod)
+	return webhook.PatchResponse(pod, modifiedPod)
 }

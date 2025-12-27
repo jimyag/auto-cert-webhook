@@ -1,4 +1,4 @@
-package webhook
+package autocertwebhook
 
 import (
 	"encoding/json"

@@ -29,31 +29,31 @@ import (
     admissionv1 "k8s.io/api/admission/v1"
     corev1 "k8s.io/api/core/v1"
 
-    "github.com/jimyag/auto-cert-webhook/pkg/admission"
+    webhook "github.com/jimyag/auto-cert-webhook"
 )
 
 func main() {
-    admission.Run(&myWebhook{})
+    webhook.Run(&myWebhook{})
 }
 
 type myWebhook struct{}
 
-func (m *myWebhook) Configure() admission.Config {
-    return admission.Config{
+func (m *myWebhook) Configure() webhook.Config {
+    return webhook.Config{
         Name: "my-webhook",
     }
 }
 
-func (m *myWebhook) Webhooks() []admission.Hook {
-    return []admission.Hook{
+func (m *myWebhook) Webhooks() []webhook.Hook {
+    return []webhook.Hook{
         {
             Path:  "/mutate-pods",
-            Type:  admission.Mutating,
+            Type:  webhook.Mutating,
             Admit: m.mutatePod,
         },
         {
             Path:  "/validate-pods",
-            Type:  admission.Validating,
+            Type:  webhook.Validating,
             Admit: m.validatePod,
         },
     }
@@ -69,41 +69,50 @@ func (m *myWebhook) mutatePod(ar admissionv1.AdmissionReview) *admissionv1.Admis
     }
     modified.Labels["mutated"] = "true"
 
-    return admission.PatchResponse(pod, modified)
+    return webhook.PatchResponse(pod, modified)
 }
 
 func (m *myWebhook) validatePod(ar admissionv1.AdmissionReview) *admissionv1.AdmissionResponse {
     // validation logic
-    return admission.Allowed()
+    return webhook.Allowed()
 }
 ```
 
 ## Configuration
 
-### User Config (in Configure())
+All configuration is done through the `Config` struct returned by `Configure()`:
 
 ```go
-func (m *myWebhook) Configure() admission.Config {
-    return admission.Config{
-        Name: "my-webhook",  // Required: used for resource naming
+func (m *myWebhook) Configure() webhook.Config {
+    return webhook.Config{
+        // Required
+        Name: "my-webhook",
+
+        // Optional - all have sensible defaults
+        Namespace:             "webhook-system",     // default: auto-detected
+        ServiceName:           "my-webhook-svc",     // default: Name
+        Port:                  8443,                 // default: 8443
+        MetricsEnabled:        ptr(true),            // default: true
+        MetricsPort:           8080,                 // default: 8080
+        MetricsPath:           "/metrics",           // default: /metrics
+        HealthzPath:           "/healthz",           // default: /healthz
+        ReadyzPath:            "/readyz",            // default: /readyz
+        CASecretName:          "my-webhook-ca",      // default: <Name>-ca
+        CertSecretName:        "my-webhook-cert",    // default: <Name>-cert
+        CABundleConfigMapName: "my-webhook-bundle",  // default: <Name>-ca-bundle
+        CAValidity:            365 * 24 * time.Hour, // default: 2 days
+        CARefresh:             30 * 24 * time.Hour,  // default: 1 day
+        CertValidity:          30 * 24 * time.Hour,  // default: 1 day
+        CertRefresh:           12 * time.Hour,       // default: 12 hours
+        LeaderElection:        ptr(true),            // default: true
+        LeaderElectionID:      "my-webhook-leader",  // default: <Name>-leader
+        LeaseDuration:         30 * time.Second,     // default: 30s
+        RenewDeadline:         10 * time.Second,     // default: 10s
+        RetryPeriod:           5 * time.Second,      // default: 5s
     }
 }
-```
 
-### Functional Options
-
-Use options to customize behavior when needed:
-
-```go
-admission.Run(&myWebhook{},
-    admission.WithNamespace("webhook-system"),
-    admission.WithPort(8443),
-    admission.WithMetricsEnabled(true),
-    admission.WithMetricsPort(8080),
-    admission.WithCAValidity(365*24*time.Hour),
-    admission.WithCertValidity(30*24*time.Hour),
-    admission.WithLeaderElection(true),
-)
+func ptr[T any](v T) *T { return &v }
 ```
 
 ## Architecture

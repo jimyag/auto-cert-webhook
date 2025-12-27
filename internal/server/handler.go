@@ -11,8 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/klog/v2"
-
-	"github.com/jimyag/auto-cert-webhook/pkg/webhook"
 )
 
 var (
@@ -29,10 +27,10 @@ func init() {
 
 // admissionHandler handles admission requests.
 type admissionHandler struct {
-	admit webhook.AdmitFunc
+	admit AdmitFunc
 }
 
-func newAdmissionHandler(admit webhook.AdmitFunc) *admissionHandler {
+func newAdmissionHandler(admit AdmitFunc) *admissionHandler {
 	return &admissionHandler{admit: admit}
 }
 

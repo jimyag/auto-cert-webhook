@@ -8,11 +8,25 @@ import (
 	"net/http"
 	"time"
 
+	admissionv1 "k8s.io/api/admission/v1"
 	"k8s.io/klog/v2"
 
-	"github.com/jimyag/auto-cert-webhook/pkg/certprovider"
-	"github.com/jimyag/auto-cert-webhook/pkg/webhook"
+	"github.com/jimyag/auto-cert-webhook/internal/certprovider"
 )
+
+// HookType defines the type of admission webhook.
+type HookType string
+
+const (
+	// Mutating indicates a mutating admission webhook.
+	Mutating HookType = "Mutating"
+	// Validating indicates a validating admission webhook.
+	Validating HookType = "Validating"
+)
+
+// AdmitFunc is the function signature for handling admission requests.
+// This is defined here to match the public API type signature.
+type AdmitFunc = func(ar admissionv1.AdmissionReview) *admissionv1.AdmissionResponse
 
 // Config holds server configuration.
 type Config struct {
@@ -47,7 +61,7 @@ func New(certProvider *certprovider.Provider, config Config) *Server {
 }
 
 // RegisterHook registers a webhook handler at the given path.
-func (s *Server) RegisterHook(path string, hookType webhook.HookType, admit webhook.AdmitFunc) {
+func (s *Server) RegisterHook(path string, hookType HookType, admit AdmitFunc) {
 	s.mux.Handle(path, newAdmissionHandler(admit))
 	klog.V(2).Infof("Registered %s webhook at %s", hookType, path)
 }
