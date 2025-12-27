@@ -80,6 +80,7 @@ func (p *Provider) Start(ctx context.Context) error {
 			}
 			if secret.Name == p.name {
 				klog.Warningf("Certificate secret %s/%s deleted", p.namespace, p.name)
+				p.current.Store(nil)
 				p.ready.Store(false)
 			}
 		},
@@ -137,7 +138,12 @@ func (p *Provider) onSecretUpdate(secret *corev1.Secret) {
 
 	// Update metrics
 	if cert.Leaf == nil {
-		cert.Leaf, _ = x509.ParseCertificate(cert.Certificate[0])
+		parsed, err := x509.ParseCertificate(cert.Certificate[0])
+		if err != nil {
+			klog.Warningf("Failed to parse certificate leaf from secret %s/%s: %v", p.namespace, p.name, err)
+		} else {
+			cert.Leaf = parsed
+		}
 	}
 	if cert.Leaf != nil {
 		metrics.UpdateCertMetrics("serving", cert.Leaf)

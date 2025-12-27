@@ -45,7 +45,10 @@ func (s *Server) Start(ctx context.Context) error {
 	s.server = &http.Server{
 		Addr:              fmt.Sprintf(":%d", s.config.Port),
 		Handler:           mux,
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: 100 * time.Millisecond,
+		ReadTimeout:       3 * time.Second,
+		WriteTimeout:      3 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	klog.Infof("Starting metrics server on port %d", s.config.Port)

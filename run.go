@@ -63,8 +63,29 @@ func RunWithContext(ctx context.Context, admission Admission) error {
 		return fmt.Errorf("at least one webhook hook is required in Webhooks()")
 	}
 
+	// Validate hooks
+	for i, hook := range hooks {
+		if hook.Path == "" {
+			return fmt.Errorf("hook[%d]: path is required", i)
+		}
+		if hook.Path[0] != '/' {
+			return fmt.Errorf("hook[%d]: path must start with '/'", i)
+		}
+		if hook.Admit == nil {
+			return fmt.Errorf("hook[%d]: admit function is required", i)
+		}
+		if hook.Type != Mutating && hook.Type != Validating {
+			return fmt.Errorf("hook[%d]: type must be Mutating or Validating", i)
+		}
+	}
+
 	// Apply defaults for any remaining unset values
 	applyDefaults(&cfg)
+
+	// Validate certificate durations
+	if err := validateCertDurations(&cfg); err != nil {
+		return err
+	}
 
 	klog.Infof("Starting webhook %s in namespace %s", cfg.Name, cfg.Namespace)
 
@@ -79,7 +100,7 @@ func RunWithContext(ctx context.Context, admission Admission) error {
 		return fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
 
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 6) // Buffer for: certProvider, server, metrics, certManager, caBundleSyncer, leaderElection
 
 	// Determine webhook refs for CA bundle syncer
 	webhookRefs := determineWebhookRefs(cfg.Name, hooks)
@@ -303,6 +324,29 @@ func startCertManagement(ctx context.Context, certMgr *certmanager.Manager, caBu
 			errCh <- err
 		}
 	}()
+}
+
+// validateCertDurations validates that certificate duration configurations are valid.
+func validateCertDurations(cfg *Config) error {
+	if cfg.CAValidity <= 0 {
+		return fmt.Errorf("CA validity must be positive, got %v", cfg.CAValidity)
+	}
+	if cfg.CARefresh <= 0 {
+		return fmt.Errorf("CA refresh must be positive, got %v", cfg.CARefresh)
+	}
+	if cfg.CertValidity <= 0 {
+		return fmt.Errorf("cert validity must be positive, got %v", cfg.CertValidity)
+	}
+	if cfg.CertRefresh <= 0 {
+		return fmt.Errorf("cert refresh must be positive, got %v", cfg.CertRefresh)
+	}
+	if cfg.CARefresh >= cfg.CAValidity {
+		return fmt.Errorf("CA refresh (%v) must be less than CA validity (%v)", cfg.CARefresh, cfg.CAValidity)
+	}
+	if cfg.CertRefresh >= cfg.CertValidity {
+		return fmt.Errorf("cert refresh (%v) must be less than cert validity (%v)", cfg.CertRefresh, cfg.CertValidity)
+	}
+	return nil
 }
 
 // determineWebhookRefs determines webhook references for CA bundle syncing.

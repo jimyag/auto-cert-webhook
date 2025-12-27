@@ -155,7 +155,7 @@ func (m *Manager) ensureCA(ctx context.Context) (*crypto.CA, error) {
 			return nil, err
 		}
 
-		secret, err = m.createSecret(m.config.Namespace, m.config.CASecretName)
+		secret, err = m.createSecret(ctx, m.config.Namespace, m.config.CASecretName)
 		if err != nil {
 			return nil, err
 		}
@@ -206,7 +206,7 @@ func (m *Manager) ensureServingCert(ctx context.Context, ca *crypto.CA, bundle [
 			return err
 		}
 
-		secret, err = m.createSecret(m.config.Namespace, m.config.CertSecretName)
+		secret, err = m.createSecret(ctx, m.config.Namespace, m.config.CertSecretName)
 		if err != nil {
 			return err
 		}
@@ -239,7 +239,7 @@ func (m *Manager) ensureServingCert(ctx context.Context, ca *crypto.CA, bundle [
 }
 
 // createSecret creates a new TLS secret.
-func (m *Manager) createSecret(namespace, name string) (*corev1.Secret, error) {
+func (m *Manager) createSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -252,7 +252,7 @@ func (m *Manager) createSecret(namespace, name string) (*corev1.Secret, error) {
 		},
 	}
 
-	return m.k8sClient.CoreV1().Secrets(namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+	return m.k8sClient.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 }
 
 // GetCABundle returns the current CA bundle from the configmap.

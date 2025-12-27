@@ -2,6 +2,8 @@ package leaderelection
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"time"
 
@@ -119,8 +121,18 @@ func getIdentity() string {
 	// Fall back to hostname
 	hostname, err := os.Hostname()
 	if err != nil {
-		klog.Errorf("Failed to get hostname: %v, using fallback", err)
-		hostname = "unknown"
+		klog.Errorf("Failed to get hostname: %v, generating random identity", err)
+		hostname = "unknown-" + randomSuffix()
 	}
 	return hostname
+}
+
+// randomSuffix generates a random 8-character hex string.
+func randomSuffix() string {
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to a fixed value if random fails (very unlikely)
+		return "00000000"
+	}
+	return hex.EncodeToString(b)
 }

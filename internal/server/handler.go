@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,16 +14,29 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var (
-	scheme = runtime.NewScheme()
-	codecs = serializer.NewCodecFactory(scheme)
+const (
+	// maxRequestBodySize is the maximum allowed request body size (10MB).
+	maxRequestBodySize = 10 * 1024 * 1024
 )
 
-func init() {
-	err := admissionv1.AddToScheme(scheme)
-	if err != nil {
-		klog.Fatalf("Failed to add admissionv1 scheme: %v", err)
-	}
+var (
+	scheme    *runtime.Scheme
+	codecs    serializer.CodecFactory
+	schemeErr error
+	schemeOnce sync.Once
+)
+
+// initScheme initializes the scheme lazily.
+func initScheme() error {
+	schemeOnce.Do(func() {
+		scheme = runtime.NewScheme()
+		if err := admissionv1.AddToScheme(scheme); err != nil {
+			schemeErr = fmt.Errorf("failed to add admissionv1 scheme: %w", err)
+			return
+		}
+		codecs = serializer.NewCodecFactory(scheme)
+	})
+	return schemeErr
 }
 
 // admissionHandler handles admission requests.
@@ -37,10 +51,18 @@ func newAdmissionHandler(admit AdmitFunc) *admissionHandler {
 func (h *admissionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	klog.V(2).Infof("Handling admission request: %s %s", r.Method, r.URL.Path)
 
+	// Initialize scheme lazily
+	if err := initScheme(); err != nil {
+		klog.Errorf("Failed to initialize scheme: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	var body []byte
 	if r.Body != nil {
 		defer r.Body.Close()
-		data, err := io.ReadAll(r.Body)
+		// Limit request body size to prevent memory exhaustion
+		data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxRequestBodySize))
 		if err != nil {
 			klog.Errorf("Failed to read request body: %v", err)
 			http.Error(w, fmt.Sprintf("failed to read request body: %v", err), http.StatusBadRequest)
@@ -84,6 +106,7 @@ func (h *admissionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Handle the request
 	if requestedAdmissionReview.Request == nil {
 		responseAdmissionReview.Response = &admissionv1.AdmissionResponse{
+			Allowed: false,
 			Result: &metav1.Status{
 				Message: "AdmissionReview.Request is nil",
 				Code:    http.StatusBadRequest,
