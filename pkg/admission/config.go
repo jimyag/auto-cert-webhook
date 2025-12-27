@@ -68,34 +68,52 @@ type Config struct {
 	RetryPeriod time.Duration
 }
 
+const (
+	DefaultServiceName           = "auto-cert-webhook"
+	DefaultNamespace             = "default"
+	DefaultPort                  = 8443
+	DefaultMetricsEnabled        = true
+	DefaultMetricsPort           = 8080
+	DefaultMetricsPath           = "/metrics"
+	DefaultHealthzPath           = "/healthz"
+	DefaultReadyzPath            = "/readyz"
+	DefaultCASecretName          = "auto-cert-webhook-ca"
+	DefaultCertSecretName        = "auto-cert-webhook-cert"
+	DefaultCABundleConfigMapName = "auto-cert-webhook-ca-bundle"
+	DefaultCAValidity            = 2 * 24 * time.Hour
+	DefaultCARefresh             = 1 * 24 * time.Hour
+	DefaultCertValidity          = 1 * 24 * time.Hour
+	DefaultCertRefresh           = 0.5 * 24 * time.Hour
+	DefaultLeaderElection        = true
+	DefaultLeaderElectionID      = "auto-cert-webhook-cert-leader"
+	DefaultLeaseDuration         = 30 * time.Second
+	DefaultRenewDeadline         = 10 * time.Second
+	DefaultRetryPeriod           = 5 * time.Second
+)
+
 // DefaultConfig returns a Config with default values.
 func DefaultConfig() *Config {
 	namespace := os.Getenv("POD_NAMESPACE")
 	if namespace == "" {
-		namespace = "default"
+		namespace = DefaultNamespace
 	}
 
 	return &Config{
 		Namespace:             namespace,
-		ServiceName:           "webhook",
-		Port:                  8443,
-		MetricsEnabled:        true,
-		MetricsPort:           8080,
-		HealthzPath:           "/healthz",
-		ReadyzPath:            "/readyz",
-		MetricsPath:           "/metrics",
-		CASecretName:          "webhook-ca",
-		CertSecretName:        "webhook-cert",
-		CABundleConfigMapName: "webhook-ca-bundle",
-		CAValidity:            365 * 24 * time.Hour, // 1 year
-		CARefresh:             180 * 24 * time.Hour, // 6 months
-		CertValidity:          30 * 24 * time.Hour,  // 30 days
-		CertRefresh:           15 * 24 * time.Hour,  // 15 days
-		LeaderElection:        true,
-		LeaderElectionID:      "webhook-cert-leader",
-		LeaseDuration:         15 * time.Second,
-		RenewDeadline:         10 * time.Second,
-		RetryPeriod:           2 * time.Second,
+		ServiceName:           DefaultServiceName,
+		Port:                  DefaultPort,
+		MetricsEnabled:        DefaultMetricsEnabled,
+		MetricsPort:           DefaultMetricsPort,
+		HealthzPath:           DefaultHealthzPath,
+		ReadyzPath:            DefaultReadyzPath,
+		MetricsPath:           DefaultMetricsPath,
+		CASecretName:          DefaultCASecretName,
+		CertSecretName:        DefaultCertSecretName,
+		CABundleConfigMapName: DefaultCABundleConfigMapName,
+		CAValidity:            DefaultCAValidity,
+		CARefresh:             DefaultCARefresh,
+		CertValidity:          DefaultCertValidity,
+		CertRefresh:           DefaultCertRefresh,
 	}
 }
 
@@ -106,7 +124,7 @@ func (c *Config) ApplyWebhookConfig(wc WebhookConfig) {
 		c.CertSecretName = wc.Name + "-cert"
 		c.CABundleConfigMapName = wc.Name + "-ca-bundle"
 		c.LeaderElectionID = wc.Name + "-cert-leader"
-		if c.ServiceName == "webhook" {
+		if c.ServiceName == DefaultServiceName {
 			c.ServiceName = wc.Name
 		}
 	}

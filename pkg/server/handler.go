@@ -21,7 +21,10 @@ var (
 )
 
 func init() {
-	_ = admissionv1.AddToScheme(scheme)
+	err := admissionv1.AddToScheme(scheme)
+	if err != nil {
+		klog.Fatalf("Failed to add admissionv1 scheme: %v", err)
+	}
 }
 
 // validatingHandler handles validating admission requests.
@@ -56,6 +59,7 @@ func (h *mutatingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // handleAdmission handles admission requests with the given handler function.
 func handleAdmission(w http.ResponseWriter, r *http.Request, handle func(admissionv1.AdmissionReview) *admissionv1.AdmissionResponse) {
+	klog.Infof("Handling admission request: %s %s", r.Method, r.URL.Path)
 	var body []byte
 	if r.Body != nil {
 		defer r.Body.Close()
@@ -81,7 +85,7 @@ func handleAdmission(w http.ResponseWriter, r *http.Request, handle func(admissi
 		return
 	}
 
-	klog.V(4).Infof("Handling admission request: %s", body)
+	klog.Infof("Handling admission request: %s", string(body))
 
 	// Decode the request
 	requestedAdmissionReview := admissionv1.AdmissionReview{}

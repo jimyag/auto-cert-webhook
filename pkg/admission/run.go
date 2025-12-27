@@ -57,6 +57,8 @@ func RunWithContext(ctx context.Context, wh Webhook, opts ...Option) error {
 		return fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
 
+	errCh := make(chan error, 1)
+
 	// Determine webhook types and refs
 	webhookRefs := determineWebhookRefs(wh, webhookConfig)
 
@@ -67,6 +69,7 @@ func RunWithContext(ctx context.Context, wh Webhook, opts ...Option) error {
 	go func() {
 		if err := certProvider.Start(ctx); err != nil {
 			klog.Errorf("Certificate provider error: %v", err)
+			errCh <- err
 		}
 	}()
 
@@ -82,6 +85,7 @@ func RunWithContext(ctx context.Context, wh Webhook, opts ...Option) error {
 	go func() {
 		if err := srv.Start(ctx); err != nil {
 			klog.Errorf("Server error: %v", err)
+			errCh <- err
 		}
 	}()
 
@@ -94,6 +98,7 @@ func RunWithContext(ctx context.Context, wh Webhook, opts ...Option) error {
 		go func() {
 			if err := metricsSrv.Start(ctx); err != nil {
 				klog.Errorf("Metrics server error: %v", err)
+				errCh <- err
 			}
 		}()
 	}
@@ -115,57 +120,60 @@ func RunWithContext(ctx context.Context, wh Webhook, opts ...Option) error {
 
 	if config.LeaderElection {
 		// Run with leader election
-		return leaderelection.Run(ctx, client, leaderelection.Config{
-			Namespace:     config.Namespace,
-			Name:          config.LeaderElectionID,
-			LeaseDuration: config.LeaseDuration,
-			RenewDeadline: config.RenewDeadline,
-			RetryPeriod:   config.RetryPeriod,
-		}, leaderelection.Callbacks{
-			OnStartedLeading: func(leaderCtx context.Context) {
-				klog.Info("Became leader, starting certificate management")
+		go func() {
+			if err := leaderelection.Run(ctx, client, leaderelection.Config{
+				Namespace:     config.Namespace,
+				Name:          config.LeaderElectionID,
+				LeaseDuration: config.LeaseDuration,
+				RenewDeadline: config.RenewDeadline,
+				RetryPeriod:   config.RetryPeriod,
+			}, leaderelection.Callbacks{
+				OnStartedLeading: func(leaderCtx context.Context) {
+					klog.Info("Became leader, starting certificate management")
 
-				// Start certificate manager
-				go func() {
-					if err := certMgr.Start(leaderCtx); err != nil {
-						klog.Errorf("Certificate manager error: %v", err)
-					}
-				}()
+					// Start certificate manager
+					startCA(leaderCtx, certMgr, caBundleSyncer, errCh)
+				},
+				OnStoppedLeading: func() {
+					klog.Info("Lost leadership")
+				},
+			}); err != nil {
+				klog.Errorf("Leader election error: %v", err)
+				errCh <- err
+			}
+		}()
+	} else {
+		// Run without leader election (single replica mode)
+		klog.Info("Running without leader election")
 
-				// Start CA bundle syncer
-				go func() {
-					if err := caBundleSyncer.Start(leaderCtx); err != nil {
-						klog.Errorf("CA bundle syncer error: %v", err)
-					}
-				}()
-			},
-			OnStoppedLeading: func() {
-				klog.Info("Lost leadership")
-			},
-		})
+		startCA(ctx, certMgr, caBundleSyncer, errCh)
 	}
 
-	// Run without leader election (single replica mode)
-	klog.Info("Running without leader election")
+	// Wait for context cancellation or error
+	select {
+	case <-ctx.Done():
+		klog.Info("Shutting down")
+		return nil
+	case err := <-errCh:
+		klog.Errorf("Error: %v", err)
+		return err
+	}
+}
 
-	// Start certificate manager
+func startCA(ctx context.Context, certMgr *certmanager.Manager, caBundleSyncer *cabundle.Syncer, errCh chan error) {
 	go func() {
 		if err := certMgr.Start(ctx); err != nil {
 			klog.Errorf("Certificate manager error: %v", err)
+			errCh <- err
 		}
 	}()
 
-	// Start CA bundle syncer
 	go func() {
 		if err := caBundleSyncer.Start(ctx); err != nil {
 			klog.Errorf("CA bundle syncer error: %v", err)
+			errCh <- err
 		}
 	}()
-
-	// Wait for context cancellation
-	<-ctx.Done()
-	klog.Info("Shutting down")
-	return nil
 }
 
 // determineWebhookRefs determines webhook references based on the webhook implementation.

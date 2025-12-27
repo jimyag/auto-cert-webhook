@@ -35,9 +35,9 @@ func DefaultConfig(namespace, name string) Config {
 	return Config{
 		Namespace:     namespace,
 		Name:          name,
-		LeaseDuration: 15 * time.Second,
+		LeaseDuration: 30 * time.Second,
 		RenewDeadline: 10 * time.Second,
-		RetryPeriod:   2 * time.Second,
+		RetryPeriod:   5 * time.Second,
 	}
 }
 
@@ -99,6 +99,7 @@ func Run(ctx context.Context, client kubernetes.Interface, config Config, callba
 		},
 	})
 	if err != nil {
+		klog.Errorf("Failed to create leader elector: %v", err)
 		return err
 	}
 
@@ -118,6 +119,7 @@ func getIdentity() string {
 	// Fall back to hostname
 	hostname, err := os.Hostname()
 	if err != nil {
+		klog.Errorf("Failed to get hostname: %v, using fallback", err)
 		hostname = "unknown"
 	}
 	return hostname

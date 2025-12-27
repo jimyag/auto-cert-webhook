@@ -90,6 +90,7 @@ func (s *Server) Start(ctx context.Context) error {
 		defer cancel()
 		return s.server.Shutdown(shutdownCtx)
 	case err := <-errChan:
+		klog.Errorf("Webhook server error: %v", err)
 		return err
 	}
 }
@@ -104,6 +105,7 @@ func (s *Server) healthzHandler(w http.ResponseWriter, r *http.Request) {
 // readyzHandler handles readiness check requests.
 func (s *Server) readyzHandler(w http.ResponseWriter, r *http.Request) {
 	if !s.certProvider.Ready() {
+		klog.Error("Certificate not ready")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		if _, err := io.WriteString(w, "certificate not ready"); err != nil {
 			klog.Errorf("Failed to write readyz response: %v", err)
