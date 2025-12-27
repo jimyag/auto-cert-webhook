@@ -2,9 +2,16 @@ package admission
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jimyag/auto-cert-webhook/pkg/webhook"
+)
+
+const (
+	// serviceAccountNamespaceFile is the path to the namespace file
+	// automatically mounted by Kubernetes in pods with ServiceAccount.
+	serviceAccountNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 )
 
 // ServerConfig holds the internal server configuration.
@@ -93,10 +100,7 @@ const (
 
 // DefaultServerConfig returns a ServerConfig with default values.
 func DefaultServerConfig() *ServerConfig {
-	namespace := os.Getenv("POD_NAMESPACE")
-	if namespace == "" {
-		namespace = DefaultNamespace
-	}
+	namespace := getNamespace()
 
 	return &ServerConfig{
 		Namespace:      namespace,
@@ -127,28 +131,25 @@ func (c *ServerConfig) ApplyUserConfig(userCfg webhook.Config) {
 		c.CABundleConfigMapName = userCfg.Name + "-ca-bundle"
 		c.LeaderElectionID = userCfg.Name + "-leader"
 	}
+}
 
-	if userCfg.Namespace != "" {
-		c.Namespace = userCfg.Namespace
+// getNamespace returns the namespace from:
+// 1. POD_NAMESPACE environment variable (if set)
+// 2. ServiceAccount namespace file (auto-mounted by Kubernetes)
+// 3. DefaultNamespace as fallback
+func getNamespace() string {
+	// First, try environment variable
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+		return ns
 	}
 
-	if userCfg.ServiceName != "" {
-		c.ServiceName = userCfg.ServiceName
+	// Second, try reading from ServiceAccount namespace file
+	if data, err := os.ReadFile(serviceAccountNamespaceFile); err == nil {
+		if ns := strings.TrimSpace(string(data)); ns != "" {
+			return ns
+		}
 	}
 
-	if userCfg.Port > 0 {
-		c.Port = userCfg.Port
-	}
-
-	if userCfg.MetricsPort > 0 {
-		c.MetricsPort = userCfg.MetricsPort
-	}
-
-	if userCfg.MetricsEnabled != nil {
-		c.MetricsEnabled = *userCfg.MetricsEnabled
-	}
-
-	if userCfg.LeaderElection != nil {
-		c.LeaderElection = *userCfg.LeaderElection
-	}
+	// Fallback to default
+	return DefaultNamespace
 }

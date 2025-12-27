@@ -34,30 +34,6 @@ type Config struct {
 	// Name is the webhook name, used for generating certificate resources.
 	// This will be used as prefix for Secret, ConfigMap, and Lease names.
 	Name string
-
-	// Namespace is the namespace where the webhook is deployed.
-	// If empty, uses POD_NAMESPACE environment variable or "default".
-	Namespace string
-
-	// ServiceName is the Kubernetes service name for the webhook.
-	// If empty, defaults to the Name field.
-	ServiceName string
-
-	// Port is the port the webhook server listens on.
-	// If 0, defaults to 8443.
-	Port int
-
-	// MetricsPort is the port for the metrics server.
-	// If 0, defaults to 8080.
-	MetricsPort int
-
-	// MetricsEnabled enables the metrics server.
-	// Defaults to true if not explicitly set.
-	MetricsEnabled *bool
-
-	// LeaderElection enables leader election for certificate management.
-	// Defaults to true if not explicitly set.
-	LeaderElection *bool
 }
 
 // Admission is the main interface that users need to implement.

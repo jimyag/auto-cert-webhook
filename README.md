@@ -85,18 +85,14 @@ func (m *myWebhook) validatePod(ar admissionv1.AdmissionReview) *admissionv1.Adm
 ```go
 func (m *myWebhook) Configure() admission.Config {
     return admission.Config{
-        Name:        "my-webhook",           // Required: used for resource naming
-        Namespace:   "webhook-system",       // Optional: defaults to POD_NAMESPACE or "default"
-        ServiceName: "my-webhook-svc",       // Optional: defaults to Name
-        Port:        8443,                   // Optional: defaults to 8443
-        MetricsPort: 8080,                   // Optional: defaults to 8080
+        Name: "my-webhook",  // Required: used for resource naming
     }
 }
 ```
 
 ### Functional Options
 
-Use options to override or extend configuration:
+Use options to customize behavior when needed:
 
 ```go
 admission.Run(&myWebhook{},
@@ -176,8 +172,10 @@ rules:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `POD_NAMESPACE` | Namespace for certificate secrets | `default` |
+| `POD_NAMESPACE` | Namespace for certificate secrets | Auto-detected from ServiceAccount |
 | `POD_NAME` | Pod identity for leader election | hostname |
+
+The namespace is automatically detected from `/var/run/secrets/kubernetes.io/serviceaccount/namespace` (mounted by Kubernetes). You only need to set `POD_NAMESPACE` if running outside a Kubernetes cluster or without a ServiceAccount.
 
 ## Metrics
 
