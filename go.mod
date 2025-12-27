@@ -1,6 +1,6 @@
 module github.com/jimyag/auto-cert-webhook
 
-go 1.25.0
+go 1.25.5
 
 require (
 	github.com/appscode/jsonpatch v1.0.1

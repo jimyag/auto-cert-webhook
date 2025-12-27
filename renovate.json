@@ -1,0 +1,55 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "customManagers:dockerfileVersions",
+    "customManagers:githubActionsVersions"
+  ],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "k8s.io/**",
+        "sigs.k8s.io/**"
+      ],
+      "groupName": "kubernetes"
+    },
+    {
+      "matchPackageNames": [
+        "golang.org/x/**",
+        "go"
+      ],
+      "groupName": "golang"
+    },
+    {
+      "matchPackageNames": [
+        "github.com/openshift/**"
+      ],
+      "groupName": "openshift"
+    },
+    {
+      "matchPackageNames": [
+        "github.com/prometheus/**"
+      ],
+      "groupName": "prometheus"
+    },
+    {
+      "matchDatasources": [
+        "golang-version"
+      ],
+      "rangeStrategy": "bump",
+      "enabled": true
+    },
+    {
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "enabled": false
+    }
+  ]
+}
