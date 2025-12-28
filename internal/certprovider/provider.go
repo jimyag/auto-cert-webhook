@@ -55,13 +55,21 @@ func (p *Provider) Start(ctx context.Context) error {
 
 	_, err := secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			secret := obj.(*corev1.Secret)
+			secret, ok := obj.(*corev1.Secret)
+			if !ok {
+				klog.Warningf("unexpected object type in AddFunc: %T", obj)
+				return
+			}
 			if secret.Name == p.name {
 				p.onSecretUpdate(secret)
 			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			secret := newObj.(*corev1.Secret)
+			secret, ok := newObj.(*corev1.Secret)
+			if !ok {
+				klog.Warningf("unexpected object type in UpdateFunc: %T", newObj)
+				return
+			}
 			if secret.Name == p.name {
 				p.onSecretUpdate(secret)
 			}

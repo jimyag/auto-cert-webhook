@@ -64,6 +64,7 @@ func RunWithContext(ctx context.Context, admission Admission) error {
 	}
 
 	// Validate hooks
+	seenPaths := make(map[string]int)
 	for i, hook := range hooks {
 		if hook.Path == "" {
 			return fmt.Errorf("hook[%d]: path is required", i)
@@ -71,6 +72,10 @@ func RunWithContext(ctx context.Context, admission Admission) error {
 		if hook.Path[0] != '/' {
 			return fmt.Errorf("hook[%d]: path must start with '/'", i)
 		}
+		if prev, exists := seenPaths[hook.Path]; exists {
+			return fmt.Errorf("hook[%d]: path %q already defined by hook[%d]", i, hook.Path, prev)
+		}
+		seenPaths[hook.Path] = i
 		if hook.Admit == nil {
 			return fmt.Errorf("hook[%d]: admit function is required", i)
 		}
@@ -125,7 +130,7 @@ func RunWithContext(ctx context.Context, admission Admission) error {
 
 	// Register webhook handlers
 	for _, hook := range hooks {
-		srv.RegisterHook(hook.Path, server.HookType(hook.Type), hook.Admit)
+		srv.RegisterHook(hook.Path, string(hook.Type), hook.Admit)
 		klog.Infof("Registered %s webhook at path %s", hook.Type, hook.Path)
 	}
 
@@ -163,6 +168,7 @@ func RunWithContext(ctx context.Context, admission Admission) error {
 		CARefresh:             cfg.CARefresh,
 		CertValidity:          cfg.CertValidity,
 		CertRefresh:           cfg.CertRefresh,
+		SyncInterval:          cfg.CertSyncInterval,
 	})
 
 	caBundleSyncer := cabundle.NewSyncer(client, cfg.Namespace, cfg.CABundleConfigMapName, webhookRefs)
@@ -352,25 +358,27 @@ func validateCertDurations(cfg *Config) error {
 // determineWebhookRefs determines webhook references for CA bundle syncing.
 func determineWebhookRefs(name string, hooks []Hook) []cabundle.WebhookRef {
 	var refs []cabundle.WebhookRef
-
-	hasMutating := false
-	hasValidating := false
+	seen := make(map[HookType]bool)
 
 	for _, hook := range hooks {
-		if hook.Type == Mutating && !hasMutating {
-			refs = append(refs, cabundle.WebhookRef{
-				Name: name,
-				Type: cabundle.MutatingWebhook,
-			})
-			hasMutating = true
+		if seen[hook.Type] {
+			continue
 		}
-		if hook.Type == Validating && !hasValidating {
-			refs = append(refs, cabundle.WebhookRef{
-				Name: name,
-				Type: cabundle.ValidatingWebhook,
-			})
-			hasValidating = true
+		seen[hook.Type] = true
+
+		var webhookType cabundle.WebhookType
+		switch hook.Type {
+		case Mutating:
+			webhookType = cabundle.MutatingWebhook
+		case Validating:
+			webhookType = cabundle.ValidatingWebhook
+		default:
+			continue
 		}
+		refs = append(refs, cabundle.WebhookRef{
+			Name: name,
+			Type: webhookType,
+		})
 	}
 
 	return refs

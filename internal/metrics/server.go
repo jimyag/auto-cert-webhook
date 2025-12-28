@@ -58,7 +58,6 @@ func (s *Server) Start(ctx context.Context) error {
 		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
-		close(errCh)
 	}()
 
 	select {

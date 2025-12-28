@@ -49,6 +49,9 @@ type Config struct {
 
 	// CertRefresh is the refresh interval for the server certificate.
 	CertRefresh time.Duration
+
+	// SyncInterval is the interval between certificate sync checks.
+	SyncInterval time.Duration
 }
 
 // Manager handles certificate rotation using openshift/library-go.
@@ -101,7 +104,11 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.configMapLister = m.informers.InformersFor(m.config.Namespace).Core().V1().ConfigMaps().Lister()
 
 	// Start the sync loop
-	ticker := time.NewTicker(time.Minute)
+	syncInterval := m.config.SyncInterval
+	if syncInterval <= 0 {
+		syncInterval = time.Minute
+	}
+	ticker := time.NewTicker(syncInterval)
 	defer ticker.Stop()
 
 	// Run immediately on start

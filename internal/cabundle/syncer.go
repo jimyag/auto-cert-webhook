@@ -69,13 +69,21 @@ func (s *Syncer) Start(ctx context.Context) error {
 
 	_, err := cmInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			cm := obj.(*corev1.ConfigMap)
+			cm, ok := obj.(*corev1.ConfigMap)
+			if !ok {
+				klog.Warningf("unexpected object type in AddFunc: %T", obj)
+				return
+			}
 			if cm.Name == s.caBundleConfigMapName {
 				s.onConfigMapUpdate(ctx, cm)
 			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			cm := newObj.(*corev1.ConfigMap)
+			cm, ok := newObj.(*corev1.ConfigMap)
+			if !ok {
+				klog.Warningf("unexpected object type in UpdateFunc: %T", newObj)
+				return
+			}
 			if cm.Name == s.caBundleConfigMapName {
 				s.onConfigMapUpdate(ctx, cm)
 			}
@@ -141,9 +149,21 @@ func (s *Syncer) patchWebhook(ctx context.Context, ref WebhookRef, caBundle []by
 	}
 }
 
+// buildCABundlePatch builds a JSON patch for updating caBundle on all webhooks.
+func buildCABundlePatch(webhookCount int, caBundle []byte) ([]byte, error) {
+	var patches []map[string]interface{}
+	for i := 0; i < webhookCount; i++ {
+		patches = append(patches, map[string]interface{}{
+			"op":    "replace",
+			"path":  fmt.Sprintf("/webhooks/%d/clientConfig/caBundle", i),
+			"value": caBundle,
+		})
+	}
+	return json.Marshal(patches)
+}
+
 // patchValidatingWebhook patches a ValidatingWebhookConfiguration.
 func (s *Syncer) patchValidatingWebhook(ctx context.Context, name string, caBundle []byte) error {
-	// Get current configuration to determine how many webhooks need patching
 	current, err := s.client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -153,17 +173,7 @@ func (s *Syncer) patchValidatingWebhook(ctx context.Context, name string, caBund
 		return err
 	}
 
-	// Build patch for all webhooks
-	var patches []map[string]interface{}
-	for i := range current.Webhooks {
-		patches = append(patches, map[string]interface{}{
-			"op":    "replace",
-			"path":  fmt.Sprintf("/webhooks/%d/clientConfig/caBundle", i),
-			"value": caBundle,
-		})
-	}
-
-	patchBytes, err := json.Marshal(patches)
+	patchBytes, err := buildCABundlePatch(len(current.Webhooks), caBundle)
 	if err != nil {
 		return fmt.Errorf("failed to marshal patch: %w", err)
 	}
@@ -175,7 +185,6 @@ func (s *Syncer) patchValidatingWebhook(ctx context.Context, name string, caBund
 
 // patchMutatingWebhook patches a MutatingWebhookConfiguration.
 func (s *Syncer) patchMutatingWebhook(ctx context.Context, name string, caBundle []byte) error {
-	// Get current configuration to determine how many webhooks need patching
 	current, err := s.client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -185,17 +194,7 @@ func (s *Syncer) patchMutatingWebhook(ctx context.Context, name string, caBundle
 		return err
 	}
 
-	// Build patch for all webhooks
-	var patches []map[string]interface{}
-	for i := range current.Webhooks {
-		patches = append(patches, map[string]interface{}{
-			"op":    "replace",
-			"path":  fmt.Sprintf("/webhooks/%d/clientConfig/caBundle", i),
-			"value": caBundle,
-		})
-	}
-
-	patchBytes, err := json.Marshal(patches)
+	patchBytes, err := buildCABundlePatch(len(current.Webhooks), caBundle)
 	if err != nil {
 		return fmt.Errorf("failed to marshal patch: %w", err)
 	}

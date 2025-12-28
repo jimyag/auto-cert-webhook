@@ -113,6 +113,10 @@ type Config struct {
 	// Env: ACW_CERT_REFRESH (e.g., "12h")
 	CertRefresh time.Duration `envconfig:"CERT_REFRESH" default:"12h"`
 
+	// CertSyncInterval is the interval between certificate sync checks.
+	// Env: ACW_CERT_SYNC_INTERVAL (e.g., "1m")
+	CertSyncInterval time.Duration `envconfig:"CERT_SYNC_INTERVAL" default:"1m"`
+
 	// LeaderElection enables leader election for certificate rotation.
 	// Env: ACW_LEADER_ELECTION
 	LeaderElection *bool `envconfig:"LEADER_ELECTION"`

@@ -14,9 +14,6 @@ import (
 	"github.com/jimyag/auto-cert-webhook/internal/certprovider"
 )
 
-// HookType defines the type of admission webhook.
-type HookType string
-
 // AdmitFunc is the function signature for handling admission requests.
 // This is defined here to match the public API type signature.
 type AdmitFunc = func(ar admissionv1.AdmissionReview) *admissionv1.AdmissionResponse
@@ -54,7 +51,7 @@ func New(certProvider *certprovider.Provider, config Config) *Server {
 }
 
 // RegisterHook registers a webhook handler at the given path.
-func (s *Server) RegisterHook(path string, hookType HookType, admit AdmitFunc) {
+func (s *Server) RegisterHook(path string, hookType string, admit AdmitFunc) {
 	s.mux.Handle(path, newAdmissionHandler(admit))
 	klog.V(2).Infof("Registered %s webhook at %s", hookType, path)
 }
