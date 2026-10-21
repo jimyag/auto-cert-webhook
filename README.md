@@ -19,7 +19,7 @@ A lightweight framework for building Kubernetes admission webhooks with automati
 
 ## Requirements
 
-- **Go**: 1.25+
+- **Go**: 1.26.0+
 - **Kubernetes**: 1.16+ (uses `admissionregistration.k8s.io/v1` API)
 
 ## Installation
@@ -178,6 +178,11 @@ CA Bundle ConfigMap:
 | `POD_NAMESPACE` | Namespace detection (falls back to ServiceAccount namespace file) |
 
 ## Prerequisites
+
+OpenShift and Kubernetes modules are upgraded together. Keep `k8s.io/kube-openapi`
+at the revision required by Kubernetes: newer commits can use an incompatible
+`structured-merge-diff` major version. Renovate updates the toolchain separately
+while preserving the library's declared minimum Go version.
 
 The framework creates Secrets and ConfigMaps automatically. You need to create the WebhookConfiguration manually or via Helm/Kustomize.
 

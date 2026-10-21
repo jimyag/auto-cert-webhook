@@ -12,6 +12,19 @@ permissions:
   pull-requests: read
 
 jobs:
+  minimum-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read the minimum Go version
+        id: minimum-go
+        run: echo "version=$(awk '/^go / { print $2; exit }' go.mod)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ steps.minimum-go.outputs.version }}
+      - name: Test the minimum supported Go version
+        run: GOTOOLCHAIN=local go test ./...
+
   build:
     runs-on: ubuntu-latest
     steps:
