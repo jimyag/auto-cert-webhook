@@ -30,7 +30,7 @@ jobs:
         run: GORACE=atexit_sleep_ms=0 go test -trimpath -failfast -race -cover -v -coverprofile=coverage.txt ./...
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
