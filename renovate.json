@@ -15,7 +15,8 @@
     {
       "matchPackageNames": [
         "k8s.io/**",
-        "sigs.k8s.io/**"
+        "sigs.k8s.io/**",
+        "github.com/openshift/**"
       ],
       "groupName": "kubernetes"
     },
@@ -25,12 +26,6 @@
         "go"
       ],
       "groupName": "golang"
-    },
-    {
-      "matchPackageNames": [
-        "github.com/openshift/**"
-      ],
-      "groupName": "openshift"
     },
     {
       "matchPackageNames": [
@@ -69,6 +64,12 @@
       ],
       "constraintsFiltering": "strict",
       "enabled": true
+    },
+    {
+      "description": "Use the kube-openapi revision selected by Kubernetes; its main branch may require a newer structured-merge-diff API.",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["k8s.io/kube-openapi"],
+      "enabled": false
     }
   ]
 }
