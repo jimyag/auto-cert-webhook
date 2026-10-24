@@ -5,7 +5,7 @@ go 1.26.0
 toolchain go1.27.3
 
 require (
-	github.com/appscode/jsonpatch v1.0.1
+	github.com/appscode/jsonpatch/v3 v3.0.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/openshift/library-go v0.0.0-20261019145849-b3e46fec8a08
 	github.com/prometheus/client_golang v1.24.1
