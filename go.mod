@@ -7,14 +7,14 @@ toolchain go1.27.3
 require (
 	github.com/appscode/jsonpatch v1.0.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/openshift/library-go v0.0.0-20261019145849-b3e46fec8a08
+	github.com/openshift/library-go v0.0.0-20261023170121-9a2bc12675c2
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.2
 	k8s.io/api v0.37.1
 	k8s.io/apimachinery v0.37.1
 	k8s.io/client-go v0.37.1
 	k8s.io/klog/v2 v2.140.0
-	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
+	k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab
 )
 
 require (
@@ -46,7 +46,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openshift/api v0.0.0-20261017003925-24b2699a9b32 // indirect
+	github.com/openshift/api v0.0.0-20261023091600-9809689a2448 // indirect
 	github.com/openshift/client-go v0.0.0-20261014115618-03a1e773ff3d // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/common v0.71.0 // indirect
